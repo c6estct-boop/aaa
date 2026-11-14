@@ -31,6 +31,10 @@ return [
     // Returned for banned / invalid / unsigned requests
     'ban_message' => 'invalid api request BANNED !',
 
+    // Auto-ban IPs that send empty / unsigned / invalid requests.
+    // Set to false if you ever lock yourself out while testing.
+    'ban_enabled' => true,
+
     'timezone' => 'Europe/Istanbul',
     'api_version' => '1.0.0',
 ];
