@@ -154,6 +154,27 @@ function vexis_migrate(PDO $pdo, string $driver): void {
             PRIMARY KEY (id),
             UNIQUE KEY uniq_ban_ip (ip)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS presence (
+            steam_id VARCHAR(24) NOT NULL,
+            license_key VARCHAR(32) NOT NULL,
+            name VARCHAR(64) NOT NULL DEFAULT '',
+            hwid VARCHAR(64) NOT NULL DEFAULT '',
+            skins TEXT NOT NULL,
+            updated_at BIGINT NOT NULL,
+            PRIMARY KEY (steam_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS chat (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            license_key VARCHAR(32) NOT NULL DEFAULT '',
+            steam_id VARCHAR(24) NOT NULL DEFAULT '',
+            name VARCHAR(64) NOT NULL DEFAULT '',
+            message VARCHAR(512) NOT NULL,
+            created_at BIGINT NOT NULL,
+            PRIMARY KEY (id),
+            KEY idx_chat_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         return;
     }
 
@@ -204,6 +225,25 @@ function vexis_migrate(PDO $pdo, string $driver): void {
         created_at INTEGER NOT NULL,
         hits INTEGER NOT NULL DEFAULT 1
     )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS presence (
+        steam_id TEXT PRIMARY KEY,
+        license_key TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        hwid TEXT NOT NULL DEFAULT '',
+        skins TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS chat (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        license_key TEXT NOT NULL DEFAULT '',
+        steam_id TEXT NOT NULL DEFAULT '',
+        name TEXT NOT NULL DEFAULT '',
+        message TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_chat_created ON chat(created_at)');
 }
 
 function vexis_json($payload, int $status = 200): void {
@@ -222,6 +262,77 @@ function vexis_fail(string $error, string $message, int $status = 200): void {
         'message' => $message,
         'server_time' => time(),
     ], $status);
+}
+
+// ---------------------------------------------------------------------------
+// Text protocol (presence / chat). Kept line-based so the injected client does
+// not need a full JSON parser. Format:
+//   OK\nPEER <steam_id> <name_b64> <skins_b64>\nEND\n
+//   OK\nMSG <id> <created_at> <steam_id> <name_b64> <text_b64>\nEND\n
+//   ERR <code> <message>
+// ---------------------------------------------------------------------------
+function vexis_text_headers(): void {
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('X-Content-Type-Options: nosniff');
+}
+
+function vexis_text_fail(string $error, string $message, int $status = 200): void {
+    http_response_code($status);
+    vexis_text_headers();
+    echo 'ERR ' . $error . ' ' . str_replace(["\r", "\n"], ' ', $message);
+    exit;
+}
+
+function vexis_b64_encode(string $value): string {
+    return base64_encode($value);
+}
+
+function vexis_b64_decode(string $value): string {
+    if ($value === '') {
+        return '';
+    }
+    // PHP form decoding turns '+' into spaces; restore them before decoding.
+    $value = strtr($value, ' ', '+');
+    $decoded = base64_decode($value, true);
+    return $decoded === false ? '' : $decoded;
+}
+
+/**
+ * Validates key+hwid for presence/chat. Returns [row, error, message].
+ * Unlike validate, this never starts a new activation by itself: the loader
+ * must have validated the key at least once (which writes the HWID).
+ */
+function vexis_license_auth(PDO $db, array $input): array {
+    $key = vexis_normalize_key((string)($input['key'] ?? ''));
+    $hwid = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($input['hwid'] ?? '')));
+
+    if ($key === '' || strlen($hwid) < 8) {
+        return [null, 'invalid_key', 'Lisans anahtari gecersiz.'];
+    }
+
+    $stmt = $db->prepare('SELECT * FROM licenses WHERE license_key = ? LIMIT 1');
+    $stmt->execute([$key]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return [null, 'unknown_key', 'Lisans bulunamadi.'];
+    }
+    if (strtolower((string)$row['status']) === 'revoked') {
+        return [null, 'revoked', 'Lisans iptal edilmis.'];
+    }
+
+    $stored = strtoupper(trim((string)($row['hwid'] ?? '')));
+    if ($stored === '' || !hash_equals($stored, $hwid)) {
+        return [null, 'hwid_mismatch', 'HWID farkli: bu lisans baska bir bilgisayara bagli.'];
+    }
+
+    $expires_at = $row['expires_at'] !== null ? (int)$row['expires_at'] : null;
+    if ($expires_at !== null && $expires_at <= time()) {
+        return [null, 'expired', 'Lisans suresi bitmis.'];
+    }
+
+    return [$row, '', ''];
 }
 
 function vexis_input(): array {
@@ -341,7 +452,8 @@ function vexis_require_valid_request(PDO $db, array $input): void {
     }
 
     $action = strtolower(trim((string)($input['action'] ?? '')));
-    if ($action !== 'validate') {
+    $allowed = ['validate', 'presence', 'chat_poll', 'chat_send'];
+    if (!in_array($action, $allowed, true)) {
         vexis_ban_ip($db, $ip, 'bad_action');
         vexis_deny_banned();
     }
