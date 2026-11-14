@@ -10,26 +10,68 @@ function vexis_config(): array {
     return $config;
 }
 
+/**
+ * All supported plans. "seconds" is the source of truth; "days" is kept for
+ * backwards compatibility with older rows / queries.
+ * seconds = 0  -> lifetime (unlimited)
+ */
 function vexis_plans(): array {
     return [
-        '1d' => ['label' => '1 Gun', 'days' => 1],
-        '7d' => ['label' => '7 Gun', 'days' => 7],
-        '30d' => ['label' => '30 Gun', 'days' => 30],
-        '90d' => ['label' => '90 Gun', 'days' => 90],
-        '1y' => ['label' => '1 Yil', 'days' => 365],
-        'lifetime' => ['label' => 'Unlimited', 'days' => 0],
+        '1m'  => ['label' => '1 Dakika',   'seconds' => 60],
+        '5m'  => ['label' => '5 Dakika',   'seconds' => 300],
+        '15m' => ['label' => '15 Dakika',  'seconds' => 900],
+        '30m' => ['label' => '30 Dakika',  'seconds' => 1800],
+        '1h'  => ['label' => '1 Saat',     'seconds' => 3600],
+        '3h'  => ['label' => '3 Saat',     'seconds' => 10800],
+        '6h'  => ['label' => '6 Saat',     'seconds' => 21600],
+        '12h' => ['label' => '12 Saat',    'seconds' => 43200],
+        '1d'  => ['label' => '1 Gun',      'seconds' => 86400],
+        '7d'  => ['label' => '7 Gun',      'seconds' => 604800],
+        '30d' => ['label' => '30 Gun',     'seconds' => 2592000],
+        '90d' => ['label' => '90 Gun',     'seconds' => 7776000],
+        '1y'  => ['label' => '1 Yil',      'seconds' => 31536000],
+        'lifetime' => ['label' => 'Unlimited', 'seconds' => 0],
+        'custom'   => ['label' => 'Ozel Sure', 'seconds' => 0],
     ];
 }
 
-function vexis_plan_label(string $plan, int $days): string {
+function vexis_plan_seconds(string $plan): int {
     $plans = vexis_plans();
-    if (isset($plans[$plan])) {
-        return $plans[$plan]['label'];
+    return isset($plans[$plan]) ? (int)$plans[$plan]['seconds'] : 0;
+}
+
+/** Human readable duration: 25 sn / 5 dk / 2 sa 10 dk / 3 gun 4 sa */
+function vexis_duration_label(int $seconds): string {
+    if ($seconds <= 0) {
+        return 'Unlimited';
     }
-    if ($days > 0) {
-        return $days . ' Gun';
+    if ($seconds < 60) {
+        return $seconds . ' sn';
     }
-    return $plan;
+    if ($seconds < 3600) {
+        $m = intdiv($seconds, 60);
+        $s = $seconds % 60;
+        return $m . ' dk' . ($s > 0 ? ' ' . $s . ' sn' : '');
+    }
+    if ($seconds < 86400) {
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        return $h . ' sa' . ($m > 0 ? ' ' . $m . ' dk' : '');
+    }
+    $d = intdiv($seconds, 86400);
+    $h = intdiv($seconds % 86400, 3600);
+    return $d . ' gun' . ($h > 0 ? ' ' . $h . ' sa' : '');
+}
+
+function vexis_plan_label(string $plan, int $seconds): string {
+    $plans = vexis_plans();
+    if ($plan !== 'custom' && isset($plans[$plan]) && ($plans[$plan]['seconds'] > 0 || $plan === 'lifetime')) {
+        return (string)$plans[$plan]['label'];
+    }
+    if ($seconds <= 0) {
+        return 'Unlimited';
+    }
+    return vexis_duration_label($seconds);
 }
 
 function vexis_db(): PDO {
@@ -72,6 +114,7 @@ function vexis_migrate(PDO $pdo, string $driver): void {
             license_key VARCHAR(32) NOT NULL,
             plan VARCHAR(24) NOT NULL DEFAULT '1y',
             duration_days INT NOT NULL DEFAULT 365,
+            duration_seconds BIGINT NOT NULL DEFAULT 0,
             created_at BIGINT NOT NULL,
             activated_at BIGINT NULL,
             expires_at BIGINT NULL,
@@ -84,6 +127,13 @@ function vexis_migrate(PDO $pdo, string $driver): void {
             PRIMARY KEY (id),
             UNIQUE KEY uniq_license_key (license_key)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // upgrade older installs that lack duration_seconds
+        $col = $pdo->query("SHOW COLUMNS FROM licenses LIKE 'duration_seconds'")->fetch();
+        if (!$col) {
+            $pdo->exec('ALTER TABLE licenses ADD COLUMN duration_seconds BIGINT NOT NULL DEFAULT 0 AFTER duration_days');
+            $pdo->exec('UPDATE licenses SET duration_seconds = duration_days * 86400 WHERE duration_seconds = 0');
+        }
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS events (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -112,6 +162,7 @@ function vexis_migrate(PDO $pdo, string $driver): void {
         license_key TEXT NOT NULL UNIQUE,
         plan TEXT NOT NULL DEFAULT '1y',
         duration_days INTEGER NOT NULL DEFAULT 365,
+        duration_seconds INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         activated_at INTEGER NULL,
         expires_at INTEGER NULL,
@@ -122,6 +173,20 @@ function vexis_migrate(PDO $pdo, string $driver): void {
         last_seen INTEGER NULL,
         validate_count INTEGER NOT NULL DEFAULT 0
     )");
+
+    // upgrade older sqlite installs that lack duration_seconds
+    $cols = $pdo->query('PRAGMA table_info(licenses)')->fetchAll();
+    $has_seconds = false;
+    foreach ($cols as $c) {
+        if (($c['name'] ?? '') === 'duration_seconds') {
+            $has_seconds = true;
+            break;
+        }
+    }
+    if (!$has_seconds) {
+        $pdo->exec('ALTER TABLE licenses ADD COLUMN duration_seconds INTEGER NOT NULL DEFAULT 0');
+        $pdo->exec('UPDATE licenses SET duration_seconds = duration_days * 86400 WHERE duration_seconds = 0');
+    }
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,8 +241,26 @@ function vexis_input(): array {
 }
 
 function vexis_client_ip(): string {
-    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
-    return substr($ip, 0, 64);
+    // Render / Cloudflare sit behind a proxy: REMOTE_ADDR is the proxy, the real
+    // visitor is in CF-Connecting-IP or X-Forwarded-For. Prefer those.
+    $candidates = [];
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        $candidates[] = (string)$_SERVER['HTTP_CF_CONNECTING_IP'];
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        foreach (explode(',', (string)$_SERVER['HTTP_X_FORWARDED_FOR']) as $part) {
+            $candidates[] = trim($part);
+        }
+    }
+    if (!empty($_SERVER['REMOTE_ADDR'])) {
+        $candidates[] = (string)$_SERVER['REMOTE_ADDR'];
+    }
+    foreach ($candidates as $candidate) {
+        if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+            return substr($candidate, 0, 64);
+        }
+    }
+    return '0.0.0.0';
 }
 
 function vexis_ban_message(): string {
@@ -186,6 +269,10 @@ function vexis_ban_message(): string {
 }
 
 function vexis_banned(PDO $db, string $ip): bool {
+    $cfg = vexis_config();
+    if (empty($cfg['ban_enabled'])) {
+        return false;
+    }
     try {
         $stmt = $db->prepare('SELECT 1 FROM bans WHERE ip = ? LIMIT 1');
         $stmt->execute([$ip]);
@@ -196,6 +283,10 @@ function vexis_banned(PDO $db, string $ip): bool {
 }
 
 function vexis_ban_ip(PDO $db, string $ip, string $reason = ''): void {
+    $cfg = vexis_config();
+    if (empty($cfg['ban_enabled'])) {
+        return;
+    }
     $ip = substr($ip, 0, 64);
     $reason = substr($reason, 0, 120);
     $now = time();
@@ -295,6 +386,12 @@ function vexis_remaining_label(?int $expires_at): string {
     if ($left <= 0) {
         return 'Expired';
     }
+    if ($left < 60) {
+        return $left . ' sn';
+    }
+    if ($left < 3600) {
+        return intdiv($left, 60) . ' dk ' . ($left % 60) . ' sn';
+    }
     $days = intdiv($left, 86400);
     $hours = intdiv($left % 86400, 3600);
     if ($days > 0) {
@@ -302,4 +399,13 @@ function vexis_remaining_label(?int $expires_at): string {
     }
     $mins = intdiv($left % 3600, 60);
     return $hours . 's ' . $mins . 'dk';
+}
+
+/** Seconds for a row, falling back to legacy duration_days. */
+function vexis_row_seconds(array $row): int {
+    $seconds = (int)($row['duration_seconds'] ?? 0);
+    if ($seconds <= 0 && (int)($row['duration_days'] ?? 0) > 0) {
+        $seconds = (int)$row['duration_days'] * 86400;
+    }
+    return $seconds;
 }
