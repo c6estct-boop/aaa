@@ -22,7 +22,7 @@ return [
     ],
 
     // CHANGE THIS BEFORE PUTTING THE PANEL ONLINE
-    'admin_password' => 'admin123',
+    'admin_password' => 'vexisinternalpanelxd',
 
     // Shared client secret (compiled in loader). Change it together with
     // src/loader/license.cpp (k_api_secret) and rebuild Vexis.exe.
