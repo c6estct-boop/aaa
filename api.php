@@ -24,7 +24,7 @@ if ($key === '') {
     vexis_fail('invalid_key', 'Lisans anahtari gecersiz. Format: VEXIS-XXXX-XXXXX-XXXXX');
 }
 if (strlen($hwid) < 8) {
-    vexis_fail('bad_hwid', 'Donanim kimligi okunamadi.');
+    vexis_fail('bad_hwid', 'HWID okunamadi.');
 }
 
 $stmt = $db->prepare('SELECT * FROM licenses WHERE license_key = ? LIMIT 1');
@@ -39,28 +39,30 @@ if (strtolower((string)$row['status']) === 'revoked') {
 }
 
 $now = time();
+$seconds = vexis_row_seconds($row);
+$lifetime = $seconds <= 0;
+
 $expires_at = $row['expires_at'] !== null ? (int)$row['expires_at'] : null;
 $activated_at = $row['activated_at'] !== null ? (int)$row['activated_at'] : null;
 $stored_hwid = trim((string)($row['hwid'] ?? ''));
 
 if ($expires_at !== null && $expires_at <= $now) {
-    vexis_fail('expired', 'Lisans suresi dolmus.');
+    vexis_log($db, $key, 'expired', 'expired_at=' . $expires_at);
+    vexis_fail('expired', 'Lisans suresi bitmis.');
 }
 
 if ($stored_hwid === '') {
     // first launch: start the clock and lock the key to this machine (HWID lock)
-    $days = (int)$row['duration_days'];
-    $lifetime = $days <= 0;
     $activated_at = $now;
-    $expires_at = $lifetime ? null : $now + $days * 86400;
+    $expires_at = $lifetime ? null : $now + $seconds;
 
     $update = $db->prepare('UPDATE licenses SET hwid = ?, activated_at = ?, expires_at = ?, last_ip = ?, last_seen = ?, '
         . 'validate_count = validate_count + 1 WHERE id = ?');
     $update->execute([$hwid, $activated_at, $expires_at, vexis_client_ip(), $now, (int)$row['id']]);
-    vexis_log($db, $key, 'activated', 'hwid=' . $hwid);
+    vexis_log($db, $key, 'activated', 'hwid=' . $hwid . ' seconds=' . $seconds);
 } elseif (!hash_equals(strtoupper($stored_hwid), $hwid)) {
     vexis_log($db, $key, 'hwid_mismatch', 'hwid=' . $hwid);
-    vexis_fail('hwid_mismatch', 'Lisans baska bir bilgisayara bagli. HWID sifirlama isteyin.');
+    vexis_fail('hwid_mismatch', 'HWID farkli: bu lisans baska bir bilgisayara bagli.');
 } else {
     $update = $db->prepare('UPDATE licenses SET last_ip = ?, last_seen = ?, validate_count = validate_count + 1 '
         . 'WHERE id = ?');
@@ -68,18 +70,18 @@ if ($stored_hwid === '') {
 }
 
 $plan = (string)$row['plan'];
-$days = (int)$row['duration_days'];
-$lifetime = $days <= 0;
+$remaining = $expires_at !== null ? max(0, $expires_at - $now) : 0;
 
 vexis_json([
     'ok' => true,
     'message' => 'Lisans aktif.',
     'key' => $key,
     'plan' => $plan,
-    'plan_label' => vexis_plan_label($plan, $days),
+    'plan_label' => vexis_plan_label($plan, $seconds),
+    'duration_seconds' => $seconds,
     'lifetime' => $lifetime,
     'activated_at' => $activated_at,
     'expires_at' => $expires_at,
-    'remaining' => $expires_at !== null ? max(0, $expires_at - $now) : 0,
+    'remaining' => $remaining,
     'server_time' => $now,
 ]);
