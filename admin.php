@@ -220,76 +220,205 @@ if ($authed) {
 <title>Vexis License Panel</title>
 <style>
     :root {
-        --bg: #07090c;
-        --panel: #0e1218;
-        --panel-2: #121821;
-        --line: rgba(255, 255, 255, .08);
-        --text: #e7edf5;
-        --muted: #8b97a8;
-        --accent: #37b1da;
-        --good: #4fd48b;
-        --bad: #ff6b6b;
+        --bg: #040608;
+        --panel: rgba(13, 17, 23, 0.85);
+        --panel-secondary: #161b22;
+        --line: rgba(255, 255, 255, 0.08);
+        --text: #e6edf3;
+        --muted: #8b949e;
+        
+        --accent: #f59e0b; /* Sıcak Hardal / Turuncu Vurgu */
+        --accent-hover: #d97706;
+        --accent-glow: rgba(245, 158, 11, 0.25);
+        
+        --good: #2ea043;
+        --bad: #f85149;
     }
+
+    /* Özel Havalı İmleç (Custom Mouse Cursor) */
+    body, button, input, select, a {
+        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%23f59e0b' stroke='%230d1117' stroke-width='2'%3E%3Cpolygon points='3 3 21 12 12 21 9 12 3 3'/%3E%3C/svg%3E"), auto !important;
+    }
+
     * { box-sizing: border-box; }
+    
     body {
         margin: 0;
         min-height: 100vh;
-        background: radial-gradient(1200px 600px at 20% -10%, rgba(55, 177, 218, .12), transparent 60%), var(--bg);
+        background-color: var(--bg);
+        background-image: 
+            radial-gradient(circle at 15% 10%, rgba(245, 158, 11, 0.06) 0%, transparent 45%),
+            radial-gradient(circle at 85% 90%, rgba(46, 160, 67, 0.04) 0%, transparent 45%);
         color: var(--text);
-        font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+        font: 14px/1.5 "Inter", "Segoe UI", system-ui, sans-serif;
+        animation: fadeIn 0.4s ease-out;
     }
-    a { color: var(--accent); text-decoration: none; }
-    .wrap { max-width: 1220px; margin: 0 auto; padding: 28px 20px 60px; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .08em; font-size: 15px; }
-    .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Gradyan Yazı Efektleri */
+    .gradient-text {
+        background: linear-gradient(135deg, #ffffff, var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+    }
+
+    a { color: var(--accent); text-decoration: none; transition: 0.2s; }
+    a:hover { color: var(--accent-hover); }
+    
+    .wrap { max-width: 1260px; margin: 0 auto; padding: 32px 20px 60px; }
+    
+    .topbar { 
+        display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; 
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: 0.06em; font-size: 17px; color: #fff; }
+    
+    .brand .dot { 
+        width: 10px; height: 10px; border-radius: 50%; 
+        background: var(--accent); 
+        box-shadow: 0 0 12px var(--accent); 
+        animation: pulse-dot 2s infinite ease-in-out;
+    }
+    @keyframes pulse-dot {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+
     .muted { color: var(--muted); }
-    .panel { background: linear-gradient(180deg, rgba(255,255,255,.03), transparent), var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
-    .grid { display: grid; gap: 14px; }
-    .stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 16px; }
-    .stat { padding: 14px 16px; }
-    .stat .n { font-size: 24px; font-weight: 700; }
-    .stat .l { color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 6px; }
-    input, select {
-        width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line);
-        background: var(--panel-2); color: var(--text); outline: none; font: inherit;
+    
+    /* Siyahımsı Cam Efektli (Glassmorphism) Paneller */
+    .panel { 
+        background: var(--panel); 
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--line); 
+        border-radius: 16px; 
+        padding: 24px; 
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+        transition: transform 0.25s ease, border-color 0.25s ease;
     }
-    input:focus, select:focus { border-color: rgba(55, 177, 218, .65); }
-    .row { display: grid; grid-template-columns: 1.4fr .8fr .7fr 1.2fr auto; gap: 10px; align-items: end; }
+    .panel:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .grid { display: grid; gap: 16px; }
+    .stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 20px; }
+    
+    .stat { 
+        padding: 18px 20px; 
+        background: linear-gradient(135deg, rgba(22, 27, 34, 0.9) 0%, rgba(13, 17, 23, 0.9) 100%);
+        border-left: 4px solid var(--accent);
+    }
+    .stat .n { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+    .stat .l { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; font-weight: 600; }
+    
+    h1 { font-size: 24px; margin: 0 0 6px; font-weight: 800; color: #fff; }
+    h2 { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; font-weight: 700; }
+    
+    label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin: 0 0 6px; letter-spacing: 0.04em; text-transform: uppercase; }
+    
+    input, select {
+        width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line);
+        background: var(--panel-secondary); color: var(--text); outline: none; font: inherit;
+        transition: all 0.2s ease;
+    }
+    input:focus, select:focus { 
+        border-color: var(--accent); 
+        box-shadow: 0 0 0 3px var(--accent-glow); 
+    }
+
+    .row { display: grid; grid-template-columns: 1.4fr .8fr .7fr 1.2fr auto; gap: 12px; align-items: end; }
+    
+    /* Vurgu Butonları (Hardal/Turuncu CTA) */
     .btn {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-        padding: 10px 16px; border-radius: 9px; border: 1px solid rgba(55, 177, 218, .45);
-        background: rgba(55, 177, 218, .14); color: #dff6ff; font: inherit; font-weight: 600; cursor: pointer;
-        white-space: nowrap;
+        padding: 11px 20px; border-radius: 10px; border: 1px solid var(--accent);
+        background: var(--accent); color: #0d1117; font: inherit; font-weight: 700; cursor: pointer;
+        white-space: nowrap; transition: all 0.2s ease;
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
     }
-    .btn:hover { background: rgba(55, 177, 218, .24); }
-    .btn.small { padding: 6px 10px; font-size: 12px; font-weight: 500; }
-    .btn.ghost { border-color: var(--line); background: transparent; color: var(--muted); }
-    .btn.danger { border-color: rgba(255, 107, 107, .35); background: rgba(255, 107, 107, .10); color: #ffc4c4; }
-    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
-    th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-    tbody tr:hover { background: rgba(255, 255, 255, .02); }
-    .key { font-family: Consolas, "Courier New", monospace; font-size: 12.5px; color: #c8f0ff; }
-    .tag { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid transparent; }
-    .tag.good { color: var(--good); background: rgba(79, 212, 139, .10); border-color: rgba(79, 212, 139, .28); }
-    .tag.bad { color: var(--bad); background: rgba(255, 107, 107, .10); border-color: rgba(255, 107, 107, .28); }
-    .tag.muted { color: var(--muted); background: rgba(255, 255, 255, .04); border-color: var(--line); }
+    .btn:hover { 
+        background: var(--accent-hover); 
+        border-color: var(--accent-hover);
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
+    }
+    .btn:active { transform: translateY(0); }
+    .btn.small { padding: 7px 14px; font-size: 12px; font-weight: 600; }
+    
+    .btn.ghost { 
+        border-color: var(--line); 
+        background: rgba(255, 255, 255, 0.03); 
+        color: var(--muted); 
+        box-shadow: none;
+    }
+    .btn.ghost:hover { 
+        background: rgba(255, 255, 255, 0.08); 
+        color: #fff; 
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn.danger { 
+        border-color: var(--bad); 
+        background: rgba(248, 81, 73, 0.15); 
+        color: var(--bad); 
+        box-shadow: 0 4px 14px rgba(248, 81, 73, 0.2);
+    }
+    .btn.danger:hover { 
+        background: var(--bad); 
+        border-color: var(--bad);
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(248, 81, 73, 0.35); 
+    }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 8px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    
+    tbody tr { transition: background-color 0.15s ease; }
+    tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+    
+    .key { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; color: #fde047; font-weight: 600; background: var(--panel-secondary); padding: 4px 8px; border-radius: 6px; display: inline-block; border: 1px solid var(--line); }
+    
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid transparent; letter-spacing: 0.02em; }
+    .tag.good { color: #3fb950; background: rgba(46, 160, 67, 0.15); border-color: rgba(46, 160, 67, 0.3); }
+    .tag.bad { color: #f85149; background: rgba(248, 81, 73, 0.15); border-color: rgba(248, 81, 73, 0.3); }
+    .tag.muted { color: var(--muted); background: rgba(255, 255, 255, 0.04); border-color: var(--line); }
+
     .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-    .toolbar { display: flex; gap: 10px; align-items: end; margin: 18px 0 6px; flex-wrap: wrap; }
-    .toolbar form { display: flex; gap: 8px; align-items: end; flex: 1; }
+    
+    .toolbar { display: flex; gap: 12px; align-items: end; margin: 20px 0 8px; flex-wrap: wrap; }
+    .toolbar form { display: flex; gap: 10px; align-items: end; flex: 1; }
     .toolbar .grow { flex: 1; }
-    .pager { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-    .flash { padding: 10px 14px; border: 1px solid rgba(79, 212, 139, .3); background: rgba(79, 212, 139, .08); border-radius: 10px; margin-bottom: 14px; color: #c9ffe0; }
-    .err { padding: 10px 14px; border: 1px solid rgba(255, 107, 107, .3); background: rgba(255, 107, 107, .08); border-radius: 10px; margin-bottom: 14px; color: #ffd2d2; }
-    .login { max-width: 380px; margin: 12vh auto 0; }
-    .login h1 { margin-bottom: 16px; }
-    .login .btn { width: 100%; margin-top: 14px; }
-    .hint { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    
+    .pager { display: flex; gap: 6px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+    
+    .flash { 
+        padding: 12px 16px; border: 1px solid rgba(46, 160, 67, 0.3); background: rgba(46, 160, 67, 0.1); 
+        border-radius: 12px; margin-bottom: 16px; color: #3fb950; font-weight: 600;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .err { 
+        padding: 12px 16px; border: 1px solid rgba(248, 81, 73, 0.3); background: rgba(248, 81, 73, 0.1); 
+        border-radius: 12px; margin-bottom: 16px; color: #f85149; font-weight: 600;
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    .login { max-width: 400px; margin: 15vh auto 0; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+    .login h1 { margin-bottom: 8px; }
+    .login .btn { width: 100%; margin-top: 16px; }
+    
     .break { word-break: break-all; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
     @media (max-width: 900px) {
         .row { grid-template-columns: 1fr 1fr; }
         .hide-sm { display: none; }
@@ -299,24 +428,23 @@ if ($authed) {
 <body>
 <div class="wrap">
     <div class="topbar">
-        <div class="brand"><span class="dot"></span> VEXIS <span class="muted" style="font-weight:400;letter-spacing:0">/ license panel</span></div>
+        <div class="brand"><span class="dot"></span> <span class="gradient-text">VEXIS</span> <span class="muted" style="font-weight:400;letter-spacing:0">/ license panel</span></div>
         <?php if ($authed): ?>
-            <a class="btn ghost small" href="admin.php?logout=1">Cikis</a>
+            <a class="btn ghost small" href="admin.php?logout=1">Çıkış</a>
         <?php endif; ?>
     </div>
 
     <?php if (!$authed): ?>
         <div class="panel login">
-            <h1>Panel girisi</h1>
-            <p class="muted" style="margin-top:0">Lisans olusturmak ve yonetmek icin sifre gir.</p>
+            <h1 class="gradient-text">Panel Girişi</h1>
+            <p class="muted" style="margin-top:0">Lisans oluşturmak ve yönetmek için şifre gir.</p>
             <?php if ($error !== ''): ?><div class="err"><?= h($error) ?></div><?php endif; ?>
             <form method="post" autocomplete="off">
                 <input type="hidden" name="login" value="1">
-                <label for="password">Sifre</label>
+                <label for="password">Şifre</label>
                 <input type="password" id="password" name="password" autofocus>
-                <button class="btn" type="submit">Giris yap</button>
+                <button class="btn" type="submit">Giriş Yap</button>
             </form>
-            <div class="hint">Sifre: <code>api/config.php</code> icindeki <code>admin_password</code>.</div>
         </div>
     <?php else: ?>
 
@@ -325,27 +453,27 @@ if ($authed) {
 
     <div class="grid stats">
         <div class="panel stat"><div class="n"><?= (int)$stats['total'] ?></div><div class="l">Toplam</div></div>
-        <div class="panel stat"><div class="n"><?= (int)$stats['unused'] ?></div><div class="l">Kullanilmadi</div></div>
+        <div class="panel stat"><div class="n"><?= (int)$stats['unused'] ?></div><div class="l">Kullanılmadı</div></div>
         <div class="panel stat"><div class="n"><?= (int)$stats['active'] ?></div><div class="l">Aktif</div></div>
-        <div class="panel stat"><div class="n"><?= (int)$stats['expired'] ?></div><div class="l">Suresi dolan</div></div>
-        <div class="panel stat"><div class="n"><?= (int)count($bans) ?></div><div class="l">Banli IP</div></div>
+        <div class="panel stat"><div class="n"><?= (int)$stats['expired'] ?></div><div class="l">Süresi Dolan</div></div>
+        <div class="panel stat"><div class="n"><?= (int)count($bans) ?></div><div class="l">Banlı IP</div></div>
     </div>
 
-    <div class="panel" style="margin-bottom:16px">
-        <h2>Lisans olustur</h2>
+    <div class="panel" style="margin-bottom:20px">
+        <h2>Lisans Oluştur</h2>
         <form method="post" class="row">
             <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
             <input type="hidden" name="action" value="create">
             <div>
-                <label for="plan">Sure</label>
+                <label for="plan">Süre</label>
                 <select id="plan" name="plan" onchange="document.getElementById('custom_days_wrap').style.display = this.value === 'custom' ? 'block' : 'none'">
-                    <option value="1d">1 Gun</option>
-                    <option value="7d">7 Gun</option>
-                    <option value="30d">30 Gun</option>
-                    <option value="90d">90 Gun</option>
-                    <option value="1y" selected>1 Yil</option>
+                    <option value="1d">1 Gün</option>
+                    <option value="7d">7 Gün</option>
+                    <option value="30d">30 Gün</option>
+                    <option value="90d">90 Gün</option>
+                    <option value="1y" selected>1 Yıl</option>
                     <option value="lifetime">Unlimited</option>
-                    <option value="custom">Ozel gun</option>
+                    <option value="custom">Özel Gün</option>
                 </select>
             </div>
             <div>
@@ -353,7 +481,7 @@ if ($authed) {
                 <input type="number" id="count" name="count" min="1" max="50" value="1">
             </div>
             <div id="custom_days_wrap" style="display:none">
-                <label for="custom_days">Gun</label>
+                <label for="custom_days">Gün</label>
                 <input type="number" id="custom_days" name="custom_days" min="1" max="3650" value="30">
             </div>
             <div>
@@ -361,10 +489,10 @@ if ($authed) {
                 <input type="text" id="note" name="note" maxlength="120" placeholder="ornek: ali / discord">
             </div>
             <div>
-                <button class="btn" type="submit">Olustur</button>
+                <button class="btn" type="submit">Oluştur</button>
             </div>
         </form>
-        <div class="hint">Anahtar formati: <span class="key">VEXIS-XXXX-XXXXX-XXXXX</span>. Ilk aktivasyonda HWID'ye kilitlenir.</div>
+        <div class="hint">Anahtar formatı: <span class="key">VEXIS-XXXX-XXXXX-XXXXX</span>. İlk aktivasyonda HWID'ye kilitlenir.</div>
     </div>
 
     <div class="panel">
@@ -378,15 +506,15 @@ if ($authed) {
                     <label for="state">Durum</label>
                     <select id="state" name="state">
                         <option value="">Hepsi</option>
-                        <option value="unused" <?= $state_filter === 'unused' ? 'selected' : '' ?>>Kullanilmadi</option>
+                        <option value="unused" <?= $state_filter === 'unused' ? 'selected' : '' ?>>Kullanılmadı</option>
                         <option value="active" <?= $state_filter === 'active' ? 'selected' : '' ?>>Aktif</option>
-                        <option value="expired" <?= $state_filter === 'expired' ? 'selected' : '' ?>>Suresi dolan</option>
-                        <option value="revoked" <?= $state_filter === 'revoked' ? 'selected' : '' ?>>Iptal</option>
+                        <option value="expired" <?= $state_filter === 'expired' ? 'selected' : '' ?>>Süresi Dolan</option>
+                        <option value="revoked" <?= $state_filter === 'revoked' ? 'selected' : '' ?>>İptal</option>
                     </select>
                 </div>
                 <button class="btn ghost" type="submit">Filtrele</button>
             </form>
-            <a class="btn ghost small" href="admin.php">Temizle</a>
+            <a class="btn ghost small" href="admin.php" style="display:inline-flex;align-items:center;height:38px;">Temizle</a>
         </div>
 
         <table>
@@ -396,15 +524,15 @@ if ($authed) {
                 <th>Plan</th>
                 <th>Durum</th>
                 <th class="hide-sm">HWID</th>
-                <th>Bitis</th>
-                <th class="hide-sm">Son gorulme</th>
+                <th>Bitiş</th>
+                <th class="hide-sm">Son Görülme</th>
                 <th class="hide-sm">Not</th>
-                <th style="text-align:right">Islem</th>
+                <th style="text-align:right">İşlem</th>
             </tr>
             </thead>
             <tbody>
             <?php if (!$rows): ?>
-                <tr><td colspan="8" class="muted" style="text-align:center;padding:26px">Kayit yok.</td></tr>
+                <tr><td colspan="8" class="muted" style="text-align:center;padding:32px">Kayıt yok.</td></tr>
             <?php endif; ?>
             <?php foreach ($rows as $row): ?>
                 <?php
@@ -430,19 +558,19 @@ if ($authed) {
                                 <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                                 <input type="hidden" name="action" value="<?= $row['status'] === 'revoked' ? 'activate' : 'revoke' ?>">
                                 <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                                <button class="btn ghost small" type="submit"><?= $row['status'] === 'revoked' ? 'Aktif et' : 'Iptal' ?></button>
+                                <button class="btn ghost small" type="submit"><?= $row['status'] === 'revoked' ? 'Aktif Et' : 'İptal' ?></button>
                             </form>
                             <form method="post">
                                 <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                                 <input type="hidden" name="action" value="reset">
                                 <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                                <button class="btn ghost small" type="submit">HWID sifirla</button>
+                                <button class="btn ghost small" type="submit">HWID Sıfırla</button>
                             </form>
                             <form method="post">
                                 <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                                 <input type="hidden" name="action" value="extend">
                                 <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                                <button class="btn ghost small" type="submit">+30 gun</button>
+                                <button class="btn ghost small" type="submit">+30 Gün</button>
                             </form>
                             <form method="post" onsubmit="return confirm('Lisans silinsin mi?')">
                                 <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -461,7 +589,7 @@ if ($authed) {
             <div class="pager">
                 <?php for ($p = 1; $p <= $pages; ++$p): ?>
                     <?php if ($p === $page): ?>
-                        <span class="btn small" style="cursor:default"><?= $p ?></span>
+                        <span class="btn small" style="cursor:default; background:var(--accent); color:#0d1117; border-color:var(--accent);"><?= $p ?></span>
                     <?php else: ?>
                         <a class="btn ghost small" href="<?= h($query_base . $p) ?>"><?= $p ?></a>
                     <?php endif; ?>
@@ -470,18 +598,18 @@ if ($authed) {
         <?php endif; ?>
     </div>
 
-    <div class="panel" style="margin-top:16px">
+    <div class="panel" style="margin-top:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
-            <h2 style="margin:0">Banli IP'ler (API)</h2>
+            <h2 style="margin:0">Banlı IP'ler (API)</h2>
             <?php if ($bans): ?>
-            <form method="post" onsubmit="return confirm('Tum banlar kaldirilsin mi?')">
+            <form method="post" onsubmit="return confirm('Tüm banlar kaldırılsın mı?')">
                 <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                 <input type="hidden" name="action" value="unban_all">
-                <button class="btn danger small" type="submit">Tumunu kaldir</button>
+                <button class="btn danger small" type="submit">Tümünü Kaldır</button>
             </form>
             <?php endif; ?>
         </div>
-        <div class="hint" style="margin-top:0;margin-bottom:10px">Bos / imzasiz / gecersiz istek atan IP'ler otomatik banlanir ve <span class="key"><?= h(vexis_ban_message()) ?></span> yaniti alir.</div>
+        <div class="hint" style="margin-top:0;margin-bottom:12px">Boş / imzasız / geçersiz istek atan IP'ler otomatik banlanır ve <span class="key"><?= h(vexis_ban_message()) ?></span> yanıtı alır.</div>
         <table>
             <thead>
             <tr>
@@ -489,12 +617,12 @@ if ($authed) {
                 <th>Sebep</th>
                 <th>Hit</th>
                 <th>Tarih</th>
-                <th style="text-align:right">Islem</th>
+                <th style="text-align:right">İşlem</th>
             </tr>
             </thead>
             <tbody>
             <?php if (!$bans): ?>
-                <tr><td colspan="5" class="muted" style="text-align:center;padding:18px">Ban yok.</td></tr>
+                <tr><td colspan="5" class="muted" style="text-align:center;padding:20px">Ban yok.</td></tr>
             <?php endif; ?>
             <?php foreach ($bans as $ban): ?>
                 <tr>
@@ -508,7 +636,7 @@ if ($authed) {
                                 <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                                 <input type="hidden" name="action" value="unban">
                                 <input type="hidden" name="id" value="<?= (int)$ban['id'] ?>">
-                                <button class="btn ghost small" type="submit">Kaldir</button>
+                                <button class="btn ghost small" type="submit">Kaldır</button>
                             </form>
                         </div>
                     </td>
@@ -525,8 +653,14 @@ if ($authed) {
             var key = button.getAttribute('data-key') || '';
             var done = function () {
                 var old = button.textContent;
-                button.textContent = 'Kopyalandi';
-                setTimeout(function () { button.textContent = old; }, 1200);
+                button.textContent = 'Kopyalandı';
+                button.style.borderColor = 'var(--good)';
+                button.style.color = 'var(--good)';
+                setTimeout(function () { 
+                    button.textContent = old; 
+                    button.style.borderColor = '';
+                    button.style.color = '';
+                }, 1400);
             };
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(key).then(done, done);
